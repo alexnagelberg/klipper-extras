@@ -37,11 +37,12 @@ class _Mover:
 
 class SyncedSteppers:
   def __init__(self, config):
-    printer = config.get_printer()
-    self._toolhead = printer.lookup_object('toolhead')
+    self.printer = config.get_printer()
+    gcode = self.printer.lookup_object('gcode')
+    gcode.register_command('MOVE_SYNC', self.cmd_MOVE_SYNC, desc="Moves STEPPER[n] at the same time")
+    self.printer.register_event_handler("klippy:connect", self.handle_connect)
 
   def move_steppers(self, steppers, wait=True):
-    # TODO: move all this code in to Mover helper class
     movers = list(map(lambda stepper : _Mover(stepper), steppers))
     self._toolhead.flush_step_generation()
 
@@ -61,5 +62,20 @@ class SyncedSteppers:
     self._toolhead.dwell(0)
     if wait: self._toolhead.wait_moves()
 
+  def cmd_MOVE_SYNC(self, gcmd):
+    steppers = []
+    for parameter in gcmd.get_command_parameters():
+      if parameter.startswith('STEPPER') and parameter[7:].isnumeric():
+        steppers.append(gcmd.get(parameter))
+
+    steppers = [{
+      'stepper': self.printer.lookup_object(stepper).get_steppers()[0],
+      'dist': gcmd.get_int('DIST'),
+      'speed': gcmd.get_int('SPEED', default=0),
+      'accel': gcmd.get_int('ACCEL', default=0)
+    } for stepper in steppers]
+
+    self.move_steppers(steppers)
+
 def load_config(config):
-  return SyncSteppers(config)
+  return SyncedSteppers(config)
