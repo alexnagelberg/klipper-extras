@@ -40,7 +40,6 @@ class SyncedSteppers:
     self.printer = config.get_printer()
     gcode = self.printer.lookup_object('gcode')
     gcode.register_command('MOVE_SYNC', self.cmd_MOVE_SYNC, desc="Moves STEPPER[n] at the same time")
-    self.printer.register_event_handler("klippy:connect", self.handle_connect)
 
   def move_steppers(self, steppers, wait=True):
     movers = list(map(lambda stepper : _Mover(stepper), steppers))
